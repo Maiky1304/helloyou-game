@@ -1,10 +1,16 @@
-from storyline import story
 import time
+
+from storyline import story
+from enum import Enum
+
+
+class PartType(Enum):
+    QUESTION = 1
+    STORY = 2
 
 
 class Game:
     def __init__(self):
-        self.title = story['title']
         self.story = story['story']
         self.current = "1"
         self.subpart = None
@@ -18,22 +24,40 @@ class Game:
         self.send(f" | {pd['title']}")
         if notification is not None:
             print(f"    {notification}")
-        self.send(" ")
-        for i in range(0, len(pd['options'])):
-            self.send(f"  {str(i+1)}. {pd['options'][i]['text']}")
-        self.send(" ")
-        self.handle_input(input(' > '))
+        part_type = PartType[pd['type']]
+        if part_type == PartType.QUESTION and pd['options'] is not None:
+            self.send(" ")
+            for i in range(0, len(pd['options'])):
+                self.send(f"  {str(i + 1)}. {pd['options'][i]['text']}")
+            self.send(" ")
+            self.handle_input(input(' > '))
+        else:
+            time.sleep(4)
+            self.next_part(pd)
+
+
 
     def handle_input(self, input_el):
+        if input_el is None or input_el == '':
+            self.display_part(notification="Je hebt niks ingevoerd.")
+            return
+
         pd = self.part_data()
         chosen = pd['options'][int(input_el)-1]
 
         if chosen is None:
             self.display_part(notification="Dit was geen optie.")
             return
+        self.next_part(chosen)
+
+    def next_part(self, target):
+        if 'close_app' in target and target['close_app']:
+            exit(0)
+            return
+
         if self.subpart is not None:
             self.subpart = None
-        next_part = chosen['target']
+        next_part = target['target']
         if next_part == "-":
             self.display_part(notification="Part was setup incorrectly")
             return
@@ -43,6 +67,7 @@ class Game:
             return
         self.current = next_part
         self.display_part()
+
 
     def part_data(self):
         if self.subpart is not None:
